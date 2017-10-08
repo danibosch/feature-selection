@@ -1,25 +1,25 @@
-# Clustering de palabras
-Agrupamiento de palabras según su relación sintáctica y semántica utilizando el argoritmo de k-means. 
+# Selección de features para clustering de palabras
+Selección supervisada y no supervisada de features para optimizar el agrupamiento de palabras según su relación sintáctica y semántica utilizando el argoritmo de k-means. 
 
 Trabajo perteneciente a la cátedra "Minería de Datos para Texto" de Laura Alonso Alemany - FaMAF UNC. 2017
-El corpus ultilizado es un dump de notas periodísticas del diario La Voz del Interior.
+El corpus ultilizado para la selección supervisada es un dump taggeado de [Wikipedia](http://www.cs.upc.edu/~nlp/wikicorpus/).
 
 ## Procedimiento
 ### Procesamiento del corpus
-1. Separación del corpus en oraciones y en palabras.
-2. Análisis morfosintáctico y funcionalidad de cada palabra.
-3. Eliminación de oraciones con menos de 10 palabras.
-4. Lematización de palabras.
-5. Conteo de ocurrencias totales de cada palabra.
-6. Creación de diccionario de palabras.
-    * Agregado de palabras al diccionario, aquellas que no sean números, puntuaciones o desconocidas. Cada palabra contiene un diccionario.
+1. Separación del corpus en oraciones y en palabras junto con sus tags.
+2. Eliminación de oraciones con menos de 10 palabras.
+3. Conteo de ocurrencias totales de cada palabra.
+4. Creación de diccionario de palabras.
+    * Agregado de diccionario de cada palabra que aparezca en el corpus, aquellas que no sean números, puntuaciones o desconocidas.
     * Agregado al diccionario de cada palabra:
-        - Palabras de contexto.
-        - Part-of-speech tag.
-        - Morfología de tag.
-        - Funcionalidad.
-        - Triplas de dependencia.
-    * Eliminación de stopwords de los diccionarios de las palabras.
+        - Part-of-speech tag de la palabra.
+        - Lema de la palabra.
+        - Part-of-speech tag de palabra de contexto a la izquierda.
+        - Part-of-speech tag de palabra de contexto a la derecha.
+        - Sentido de palabra de contexto a la izquierda.
+        - Sentido de palabra de contexto a la derecha.
+        - Lema de palabra de contexto a la izquierda.
+        - Lema de palabra de contexto a la derecha.
     * Eliminación de palabras poco frecuentes en el corpus, de los diccionarios de las palabras.
     * Eliminación de palabras poco frecuentes como contexto, de los diccionarios de las palabras.
 7. Vectorización de las palabras.
