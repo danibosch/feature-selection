@@ -4,6 +4,8 @@ Selección supervisada y no supervisada de features para optimizar el agrupamien
 Trabajo perteneciente a la cátedra "Minería de Datos para Texto" de Laura Alonso Alemany - FaMAF UNC. 2017
 El corpus ultilizado para la selección supervisada es un dump taggeado de [Wikipedia](http://www.cs.upc.edu/~nlp/wikicorpus/).
 
+El siguiente procedimiento pertenece a la selección supervisada de features.
+
 ## Procedimiento
 ### Procesamiento del corpus
 1. Separación del corpus en oraciones y en palabras junto con sus tags.
@@ -22,8 +24,13 @@ El corpus ultilizado para la selección supervisada es un dump taggeado de [Wiki
         - Lema de palabra de contexto a la derecha.
     * Eliminación de palabras poco frecuentes en el corpus, de los diccionarios de las palabras.
     * Eliminación de palabras poco frecuentes como contexto, de los diccionarios de las palabras.
-7. Vectorización de las palabras.
-8. Normalización de la matriz (número de ocurrencias totales de la columna sobre ocurrencias por cada fila).
+5. Creación de vector de clases con los sentidos de cada palabra.
+6. Vectorización de las palabras.
+7. Entrenamiento supervisado para reducción de features:
+   - Recursive feature elimination
+   - Univariate feature selection
+8. Creación de matriz final con número de ocurrencias de features seleccionados
+9. Normalización de la matriz (número de ocurrencias totales de la columna sobre ocurrencias por cada fila).
 
 ### Clustering
 1. Elección de número de clusters.
@@ -32,6 +39,53 @@ El corpus ultilizado para la selección supervisada es un dump taggeado de [Wiki
 2. Iteración a tres valores distintos de k.
 
 ## Procedimiento en detalle
+Separamos el corpus en oraciones. Las oraciones se encuentran separadas por doble salto de línea.
+
+      def parse_sents(text):
+         sentences = text.split('\n\n')
+         return sentences
+         
+Luego separamos cada oración en palabras con sus features. Cada palabra se encuentra separada por un salto de línea.
+
+      words_in_sent = []
+      for sentence in sentences:
+         if len(sentence) > 10:
+            words_in_sent.append(sentence.split('\n'))
+
+A cada palabra la separamos en sus features.
+
+      featured_words = []
+      for sent in words_in_sent:
+          if bool(getrandbits(1)):
+              s = []
+              for word in sent:
+                  if not re.match("<doc", word) and not re.match("</doc", word):
+                      s.append(word.split())
+              featured_words.append(s)
+              
+Ahora recorremos la lista con todas las palabras y creamos el diccionario de features, quitando puntuaciones, números, desconocidas.
+
+      lemma, pos, wclass = word[1], word[2], word[3]
+      if pos[0] == 'F' or pos[0] == 'Z':
+         continue
+      if counts[lemma] < threshold_w:
+         continue
+      features = {}
+
+Por cada aparición de la palabra agregamos su lema.
+
+      features[lemma] = 1
+      
+Agregamos su POS (separadas).
+
+      features[pos[0]] = 1
+        if len(pos) > 1:
+            features[pos[1]] = 1
+        if len(pos) > 2:
+            if not pos[2] == '0':
+                features[pos[2]] = 1
+
+
 Utilizamos la herramienta Scapy para separar en oraciones, en palabras y etiquetar cada palabra con su POS tag, morfología del tag y funcionalidad en la oración.
 
       nlp = spacy.load('es', vectors=False, entity=False)
