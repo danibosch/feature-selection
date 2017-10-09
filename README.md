@@ -4,7 +4,7 @@ Selección supervisada y no supervisada de features para optimizar el agrupamien
 Trabajo perteneciente a la cátedra "Minería de Datos para Texto" de Laura Alonso Alemany - FaMAF UNC. 2017
 El corpus ultilizado para la selección supervisada es un dump taggeado de [Wikipedia](http://www.cs.upc.edu/~nlp/wikicorpus/).
 
-El siguiente procedimiento pertenece a la selección supervisada de features.
+El siguiente procedimiento pertenece a la selección supervisada de features. La selección de features no supervisada se encuentra en [Clustering de palabras, primera parte](github.com/danibosch/word_clustering)
 
 ## Procedimiento
 ### Procesamiento del corpus
@@ -63,7 +63,7 @@ A cada palabra la separamos en sus features.
                       s.append(word.split())
               featured_words.append(s)
               
-Ahora recorremos la lista con todas las palabras y creamos el diccionario de features, quitando puntuaciones, números, desconocidas.
+Ahora recorremos la lista con todas las palabras y creamos el diccionario de features, quitando puntuaciones, números, desconocidas y creamos paralelamente el vector de clases. Cada aparición es una fila.
 
       lemma, pos, wclass = word[1], word[2], word[3]
       if pos[0] == 'F' or pos[0] == 'Z':
@@ -85,141 +85,67 @@ Agregamos su POS (separadas).
             if not pos[2] == '0':
                 features[pos[2]] = 1
 
+Luego, de cada contexto de la palabra agregamos su lema, y su POS.
 
-Utilizamos la herramienta Scapy para separar en oraciones, en palabras y etiquetar cada palabra con su POS tag, morfología del tag y funcionalidad en la oración.
+      if not word == sent[0]:
+         word_before = sent[index - 1]
+         if counts[word_before[1]] > threshold_c:
+             izq_word = 'izq' + word_before[1]
+             izq_pos = 'izq' + word_before[2][:2]
+             features[izq_word] = 1
+             features[izq_pos] = 1
 
-      nlp = spacy.load('es', vectors=False, entity=False)
-      doc = nlp(dataset)
+      if not word == sent[len(sent) - 1]:
+         word_after = sent[index + 1]
+         if counts[word_after[1]] > threshold_c:
+             der_word = 'der' + word_after[1]
+             der_pos = 'der' + word_after[2][:2]
+             der_sense = 'der' + word_after[3]
+             features[der_word] = 1
+             features[der_pos] = 1
+
+Vectorizamos el diccionario.
+
+      v = DictVectorizer(dtype=np.bool_, sparse=False)
+      matrix_words = v.fit_transform(dict_words)
       
-Las palabras pueden accederse de dos maneras:
-Desde cada oración:
+Aplicamos SelectFromModel. Este transformador selecciona los features según la importancia de los pesos, basado en un estimador (LinearSVC).
 
-      doc.sents[0]
+      lsvc = LinearSVC(C=0.01, penalty="l1", dual=False).fit(matrix_words, class_words)
+      model = SelectFromModel(lsvc, prefit=True)
+      X_new = model.transform(matrix_words)
       
-Desde todo el documento:
+Aplicamos SelectKBest (Univariate feature selection). Remueve features dejando los k mejores basado en tests de estadística univariada. SelectKBest toma como estimado la función chi2.
 
-      doc[0]
-
-Quitamos las oraciones con menos de 10 palabras:
-
-      sents = [sent for sent in doc.sents if len(sent) > 10]
-
-Creamos una lista con las palabras procesadas, evitando aquellas que sean puntuaciones, números o desconocidas.
-
-      words = []
-      words_lemma = []
-      for sent in sents:
-          for word in sent:
-              if word.is_alpha:
-                  words.append(word)
-                  words_lemma.append(word.lemma_)
-
-Contamos las ocurrencias totales de cada palabra en el corpus
-
-      counts = Counter(words_lemma)
+      matrixchi = SelectKBest(chi2, k=300).fit_transform(X_new, class_words)
       
-Usamos un diccionario de lemas, ya que el lematizador que utiliza Scapy en español sólo transforma las palabras en lowercase.
-Este diccionario es una herramienta útil aunque no es precisa ya que no considera la función que cumple la palabra en la oración, lo cual genera problemas en palabras que son ambiguas.
+Ahora creamos la matriz con cada palabra como vector, sumando los features seleccionados.
+
+      mfinal = np.zeros((len(words_dict), matrixchi.shape[1]))
+
+      for index, lemma in enumerate(words):
+          i = words_dict[lemma]
+          mfinal[i] += matrixchi[index]
+
+Ahora normalizamos la matriz.
+
+      normed_matrix = mfinal / mfinal.max(axis=1)
       
-      lemma_file = open("lemmatization-es.txt", "r")
+Aplicamos el algoritmo de clustering k-means para 3 valores de k.
 
-Recorremos la lista de palabras descartando aquellas que ocurren pocas veces y las agregamos a un diccionario. Si la palabra fue agregada anteriormente, traemos los features para modificarlos.
+      def clustering(k):
+          clusterer = kmeans.KMeansClusterer(k, cosine_distance, avoid_empty_clusters=True)
+          clusters = clusterer.cluster(normed_matrix, True)
+          return clusters
 
-      for word in words:
-          w = lemmatize(word.lemma_)
-          if not word.is_alpha or str.isdigit(w) or counts[w] < threshold_w:
-              continue
-          if not w in dicc:
-              features = {}
-          else:
-              features = dicc[w]
+## Resultados selección supervisada
+k = 50
 
-Agregamos los features. 
-Primero agregamos su POS tag.
+k = 100
 
-      pos = "POS__" + word.pos_
-      if not pos in features:
-         features[pos] = 0
-      features[pos] += 1
-      
-Luego agregamos su funcionalidad.
+k = 150
 
-      dep = "DEP__" + word.dep_
-      if not dep in features:
-         features[dep] = 0
-      features[dep] += 1
-
-Luego, la morfología del tag, siendo ésta parseada previamente ya que se encuentran unidas en un solo string
-
-      tags = parse_tags(word)
-      for tag in tags:
-         if not tag in features:
-            features[tag] = 0
-         features[tag] += 1
-        
-Agregamos los contextos, sin orden (ventana de 1 palabra).
-
-      if not word.i == 0:
-           context_izq = doc[word.i - 1]
-           c_izq = lemmatize(context_izq.lemma_)
-           if context_izq.is_alpha and counts[c_izq] > threshold_c:
-               if str.isdigit(c_izq):
-                   c_izq = "NUM__"
-               if not c_izq in features:
-                   features[c_izq] = 0
-               features[c_izq] += 1
-
-       if not word.i < len(doc):
-           context_der = doc[word.i + 1]
-           c_der = lemmatize(context_der.lemma_)
-           if context_der.is_alpha and counts[c_der] > threshold_c:
-               if str.isdigit(c_der):
-                   c_der = "NUM__"
-               if not c_der in features:
-                   features[c_der] = 0
-               features[c_der] += 1
-
-Agregamos la tripla de dependencia: palabra__lemma__funcionalidad__palabra-head-del-arbol-de-dependencia-lematizada
-
-    tripla = "TRIPLA__" + w + "__" + word.lemma_ + "__" + word.dep_ + "__" + lemmatize(word.head.lemma_)
-    if not tripla in features:
-        features[tripla] = 0
-    features[tripla] += 1
-
-Separamos las palabras y sus features
-
-      features = []
-      key_words = {}
-      wid = 0
-      for d in dicc:
-          if len(d) > 0:
-              key_words[d] = wid
-              wid += 1
-              features.append(dicc[d])
-              
-Vectorizamos las palabras con Sklearn
-
-      from sklearn.feature_extraction import DictVectorizer
-      v = DictVectorizer(sparse=False)
-      matrix = v.fit_transform(features)
-      
-Normalizamos la matriz
-
-      matrix_normed = matrix / matrix.max(axis=0)
-      
-Reducimos la dimensionalidad quitando aquellas columnas que tengan poca varianza, ya que no nos aporta demasiada información.
-
-      variances = np.square(matrix_normed).mean(axis=0) - np.square(matrix_normed.mean(axis=0))
-      threshold_v = 0.001
-      red_matrix = np.delete(matrix_normed, np.where(variances < threshold_v), axis=1)
-      
-Ahora creamos los clusters:
-Utilizamos el algoritmo de kmeans de nltk para crear juntar en clusters. Las semillas son aleatorias. Iteramos a 3 valores. 
-
-      clusterer = kmeans.KMeansClusterer(k, cosine_distance, avoid_empty_clusters=True)
-      clusters = clusterer.cluster(red_matrix, True)
-
-## Resultados
+## Resultados selección no supervisada
 k = 50
 
       # Stopwords
