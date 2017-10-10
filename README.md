@@ -115,21 +115,17 @@ Aplicamos SelectFromModel. Este transformador selecciona los features según la 
       model = SelectFromModel(lsvc, prefit=True)
       X_new = model.transform(matrix_words)
       
-Aplicamos SelectKBest (Univariate feature selection). Remueve features dejando los k mejores basado en tests de estadística univariada. SelectKBest toma como estimado la función chi2.
-
-      matrixchi = SelectKBest(chi2, k=300).fit_transform(X_new, class_words)
-      
 Ahora creamos la matriz con cada palabra como vector, sumando los features seleccionados.
 
-      mfinal = np.zeros((len(words_dict), matrixchi.shape[1]))
+      mfinal = np.zeros((len(words_dict), X_new.shape[1]))
 
       for index, lemma in enumerate(words):
           i = words_dict[lemma]
-          mfinal[i] += matrixchi[index]
+          mfinal[i] += X_new[index]
 
 Ahora normalizamos la matriz.
 
-      normed_matrix = mfinal / mfinal.max(axis=1)
+      normed_matrix = normalize(mfinal)
       
 Aplicamos el algoritmo de clustering k-means para 3 valores de k.
 
@@ -141,9 +137,15 @@ Aplicamos el algoritmo de clustering k-means para 3 valores de k.
 ## Resultados selección supervisada
 k = 50
 
+      ['y', 'guitarra', 'obra', 'siguiente', 'cada', 'fuerte', 'derecho', 'distribución', 'inglés', 'hacer', 'popular', 'decidir', 'capacidad', 'of', 'campo', 'por', 'ańo', 'muy', 'quedar', 'a', 'nivel', 'revista', 'principal', 'madre', 'considerar', 'su', 'importante', 'in', 'todo', 'and', 'necesario', 'la', 'poder', 'oeste', 'en', 'alguno', 'barrio', 'e', 'regresar', 'at', 'crear', 'dentro_de', 'población', 'haber', 'casa', 'así', 'entre', 'endofarticle', 'insee', 'ordenar', 'perteneciente', 'servicio', 'semana', 'paso', 'hermano', 'estar', 'ciudad', 'conocer', 'dios', 'el', 'mejor', 'guerra', 'más', 'entrar', 'ser', 'comenzar', 'así_como', 'bajo', 'sustituir', 'equipo', 'fecha', 'desde', 'cantón', 'contar', 'él', 'disco', 'estudio', 'francés', 'no', 'final', 'ejército', 'programa', 'si', 'tomar', 'también', 'para', 'que', 'luego_de', 'de', 'nuevo', 'álbum', 'ir', 'medio', 'padre', 'destacar', 'capital', 'tener', 'enlace', 'existir', 'otro', 'como', 'gran', 'rey', 'durante', 'mismo', 'ese', 'planta', 'norte', '1', 'se', 'pp.', 'realizar', 'méxico', 'externo', 'querer', 'sobre', 'hecho', 'uno', 'estadounidense', 'referencias', 'the', 'cantante', 'o', 'historia', 'grupo', 'le', 'cambiar', 'decir', 'conjunto', 'tiempo', 'película', 'hasta', 'a_través_de', 'obama', 'imagen', 'nombre']
+
 k = 100
 
+      ['y', 'guitarra', 'obra', 'siguiente', 'derecho', 'hacer', 'decidir', 'por', 'ańo', 'casi', 'muy', 'a', 'nivel', 'revista', 'principal', 'su', 'importante', 'todo', 'municipal', 'poder', 'en', 'técnica', 'barrio', 'e', 'at', 'crear', 'así', 'endofarticle', 'ordenar', 'perteneciente', 'servicio', 'día', 'estar', 'ciudad', 'conocer', 'el', 'poco', 'más', 'ser', 'así_como', 'bajo', 'eln', 'nacer', 'equipo', 'desde', 'cantón', 'los', 'ganar', 'él', 'disco', 'francés', 'aparecer', 'final', 'si', 'para', 'que', 'de', 'nuevo', 'medio', 'donde', 'capital', 'tener', 'enlace', 'existir', 'otro', 'como', 'rey', 'planta', 'norte', '1', 'se', 'méxico', 'externo', 'sobre', 'hecho', 'uno', 'referencias', 'o', 'historia', 'grupo', 'cambiar', 'decir', 'acabar', 'tiempo', 'película', 'hasta', 'imagen', 'con']
+
 k = 150
+
+      ['cierto', 'y', 'demografía', 's', 'inglés', 'cuando', 'hacer', 'decidir', 'of', 'por', 'ańo', 'a', 'principal', 'su', 'importante', 'todo', 'and', 'interpretar', 'cual', 'en', 'et', 'alguno', 'e', 'at', 'casa', 'entre', 'endofarticle', 'estado', 'hermano', 'ciudad', 'conocer', 'el', 'guerra', 'poco', 'más', 'ser', 'así_como', 'bajo', 'sustituir', 'formación', 'continuar', 'tierra', 'no', 'final', 'si', 'on', 'tomar', 'también', 'para', 'que', 'construcción', 'parte', 'de', 'nuevo', 'enlace', 'existir', 'otro', 'gran', 'rey', 'pequeńo', 'durante', 'planta', '1', 'se', 'país', 'uno', 'o', 'le', 'acabar', 'les', 'tiempo', 'película', 'hasta', 'obama', 'con', 'pieza', 'nombre']
 
 ## Resultados selección no supervisada
 k = 50
